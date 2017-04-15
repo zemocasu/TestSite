@@ -116,7 +116,7 @@
       // Reverses direction once max_n_dots is reached
       function advance_n_dots() {
         n_dots = Math.min(max_n_dots, n_dots + n_dots_delta);
-        if (n_dots == max_dots) {
+        if (n_dots == max_n_dots) {
           n_dots_delta = -n_dots_delta;
         }
       }

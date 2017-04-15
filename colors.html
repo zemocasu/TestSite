@@ -1,7 +1,8 @@
 <html>
 
   <head>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-fork-ribbon-css/0.2.0/gh-fork-ribbon.min.css" />
+    <link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/github-fork-ribbon-css/0.2.0/gh-fork-ribbon.min.css" />
     <style>
       #mycanvas {
         position: absolute;
@@ -15,7 +16,9 @@
   </head>
 
   <body>
-    <a class="github-fork-ribbon" href="https://github.com/slowkow/circles" title="Fork me on GitHub">Fork me on GitHub</a>
+    <a class="github-fork-ribbon"
+      href="https://github.com/slowkow/circles"
+      title="Fork me on GitHub">Fork me on GitHub</a>
     <canvas id="mycanvas" width="600" height="600"></canvas>
     <script>
 
@@ -55,9 +58,9 @@
       }
 
       function create_dots(x, y, n) {
-        var retval = [];
+        var res = [];
         for (i = 0; i < n; i++) {
-          retval.push({
+          res.push({
             x:                x,
             y:                y,
             rad:              i / n * Math.PI,
@@ -68,19 +71,18 @@
             lightness_offset: i / n * 2 * Math.PI
           });
         }
-        return retval;
+        return res;
       }
 
       function draw_circle(context, x, y, radius, hue, lightness) {
         context.beginPath();
         context.arc(x, y, radius, 0, 2 * Math.PI, false);
         // context.fillStyle = 'white';
-        // var l = Math.pow(distance({x: x, y: y}, {x: cw, y: ch}) / cw, 2);
+        // var l = Math.pow(distance({x: x, y: y}, {x: dots_width, y: dots_height}) / dots_width, 2);
         // var l = 0.65;
         var rgb = hslToRgb(hue, 0.75, lightness);
-        context.fillStyle = 'rgba(' +
-          rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + 0.5 +
-        ')';
+        context.fillStyle =
+          'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + 0.5 + ')';
         context.fill();
         // context.lineWidth = 1;
         // context.strokeStyle = '#003300';
@@ -91,28 +93,41 @@
         return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
       }
 
-      var canvas         = document.getElementById('mycanvas'),
-        context              = canvas.getContext('2d'),
-        i                = 0,
-        dot              = null,
-        n_dots           = 1,
-        rad_global       = 0,
-        rad_hue          = 0,
-        rad_lightness    = 0,
-        rad_rad_hue      = 100,
-        rad_rad_hue_step = 1,
-        border           = 20,
-        ch               = canvas.height / 2 - border,
-        cw               = canvas.width / 2 - border,
-        dots             = create_dots(cw, ch, n_dots);
+      var canvas           = document.getElementById('mycanvas');
+      var context          = canvas.getContext('2d');
+      var i                = 0;
+      var dot              = null;
+      var n_dots           = 1;
+      var n_dots_delta     = 1;
+      var max_n_dots       = 100;
+
+      var border           = 20;
+      var dots_height      = canvas.height / 2 - border;
+      var dots_width       = canvas.width / 2 - border;
+      var dots             = create_dots(dots_width, dots_height, n_dots);
+
+      var rad_global       = 0;
+      var rad_hue          = 0;
+      var rad_lightness    = 0;
+      var rad_rad_hue      = 100;
+      var rad_rad_hue_step = 1;
+
+      // Advanceds n_dots by n_dots_delta
+      // Reverses direction once max_n_dots is reached
+      function advance_n_dots() {
+        n_dots = Math.min(max_n_dots, n_dots + n_dots_delta);
+        if (n_dots == max_dots) {
+          n_dots_delta = -n_dots_delta;
+        }
+      }
 
       function step(time) {
         // Advance the global radians.
         rad_global += Math.PI / 100;
         if (rad_global > 2 * Math.PI) {
           rad_global -= 2 * Math.PI;
-          n_dots = Math.min(100, n_dots * 2);
-          dots = create_dots(cw, ch, n_dots);
+          advance_n_dots();
+          dots = create_dots(dots_width, dots_height, n_dots);
         }
         rad_rad_hue += rad_rad_hue_step;
         if (rad_rad_hue > 150 || rad_rad_hue < 40) {
@@ -137,15 +152,15 @@
         for (i = 0; i < dots.length; i++) {
           dot = dots[i];
           // update the position
-          dot.y = border + ch + ch * Math.sin(dot.rad) *
+          dot.y = border + dots_height + dots_height * Math.sin(dot.rad) *
             Math.cos(rad_global + dot.rad_offset);
-          dot.x = border + cw + cw * Math.cos(dot.rad) *
+          dot.x = border + dots_width + dots_width * Math.cos(dot.rad) *
             Math.cos(rad_global + dot.rad_offset);
           dot.hue = 1 - (1 + Math.cos(rad_hue + dot.hue_offset)) / 2;
           dot.lightness = 1 - (1 + Math.cos(rad_lightness + dot.lightness_offset)) / 2;
           // lines
           // context.beginPath();
-          // context.moveTo(border + cw, border + ch);
+          // context.moveTo(border + dots_width, border + dots_height);
           // context.lineTo(dot.x, dot.y);
           // context.lineWidth = 1;
           // context.stroke();
@@ -162,15 +177,14 @@
       window.requestAnimationFrame(step);
 
       window.onkeydown = function(event) {
-        // 38 up arrow
         if (event.keyCode == 38) {
+          // 38 up arrow
           n_dots = Math.min(100, n_dots + 1);
-          dots = create_dots(cw, ch, n_dots);
-        }
-        // 40 down arrow
-        else if (event.keyCode == 40) {
+          dots = create_dots(dots_width, dots_height, n_dots);
+        } else if (event.keyCode == 40) {
+          // 40 down arrow
           n_dots = Math.max(1, n_dots - 1);
-          dots = create_dots(cw, ch, n_dots);
+          dots = create_dots(dots_width, dots_height, n_dots);
         }
       }
 

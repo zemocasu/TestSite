@@ -4,15 +4,15 @@
     <style>
       #canvas {
         position: absolute;
-        top: 25%;
-        left: 25%;
+        top: 15%;
+        left: 15%;
       }
     </style>
   </head>
 
   <body bgcolor="#E6E6FA">
   <!-- <body> -->
-    <canvas id="canvas" width="600" height="600"></canvas>
+    <canvas id="canvas" width="1000" height="750"></canvas>
     <script>
 
       // SET UP
@@ -22,16 +22,12 @@
       var canvasSize = [ canvas.width, canvas.height ];
       var prevTime = 0;
 
-      // At most, change once per this many millis
-      // This is to avoid awkward behavior when circles spawn
-      // on top of each other and just jitter around each other
-      var minChangeTime = 200;
-
       var dimensions = 2;
-      var maxVelocity = 0.2;
-      var maxTime = 1000000;
+      var maxVelocity = 1;
+      var maxStartingVelocity = 0.1;
+      var maxTime = 100000;
 
-      var nCircles = 10;
+      var nCircles = 3;
       var maxCircleRadius = 50;
       var minCircleRadius = 10;
       var circles = createCircles(nCircles);
@@ -55,12 +51,12 @@
           vel: [],
           acc: [],
           rad: radius,
-          mass: radius * radius,
-          lastChangeTime: prevTime
+          mass: radius * radius * 0.01
         };
         for (var i = 0; i < dimensions; i++) {
           circle.pos.push(Math.random() * (canvasSize[i] - 2 * circle.rad) + circle.rad);
-          circle.vel.push(Math.random() * maxVelocity);
+          // circle.pos.push(Math.random() * 100 + 100);
+          circle.vel.push(Math.random() * maxStartingVelocity);
           circle.acc.push(0);
         }
         return circle;
@@ -70,24 +66,23 @@
 
       // RUN
 
-      // Add some acceleration fields
-
       // Arg is total elapsed time in milliseconds
       function step(currTime) {
         var timeDelta = currTime - prevTime;
 
         // Draw canvas background
         context.fillStyle = 'rgba(32,32,32,1)';
-        context.fillRect(0, 0, 600, 600);
+        context.fillRect(0, 0, canvas.width, canvas.height);
 
         // Draw & advance circles
         for (var i = 0; i < circles.length; i++) {
           drawCircle(circles[i]);
+          calculateAcceleration();
           advance(circles[i], timeDelta);
         }
-
-        // Calculate impact & reflect velocities
-        bounce(currTime);
+        for (var i = 0; i < circles.length; i++) {
+          wallBounce(i);
+        }
 
         // Update time
         prevTime = currTime;
@@ -120,50 +115,39 @@
         context.fill();
       }
 
-      // Advances position and acceleration for given time delta in millis
-      // TODO it would be better, less glitchy, to calculate impact before advancing
-      function advance(circle, timeDelta) {
-        for (var i = 0; i < dimensions; i++) {
-          circle.pos[i] += circle.vel[i] * timeDelta;
-          circle.vel[i] += circle.acc[i] * timeDelta;
+      // Drop the gravitational constant,
+      // because no units here anyway
+      function calculateAcceleration() {
+        for (var i = 0; i < circles.length; i++) {
+          var acc = [0, 0];
+          for (var j = 0; j < circles.length; j++) {
+            if (i != j) {
+              var accMag = circles[j].mass / distanceSquared(circles[i], circles[j]);
+              var accHat = perpendicularVector(unitVector(vectorSubtract(circles[j].pos, circles[i].pos)));
+              var accVector = vectorMultiplyScalar(accHat, accMag);
+              acc[0] += accVector[0];
+              acc[1] += accVector[1];
+            }
+          }
+          circles[i].acc = acc;
         }
       }
 
-      // Bounces off walls and other circles
-      // For simplicity, only one kind of bounce per cycle per circle
-      function bounce(currTime) {
-        for (var i = 0; i < circles.length; i++) {
-          if (!wallBounce(currTime, i)) {
-            circleBounce(currTime, i);
-          }
+      // Advances position and acceleration for given time delta in millis
+      function advance(circle, timeDelta) {
+        for (var i = 0; i < dimensions; i++) {
+          circle.vel[i] += circle.acc[i] * timeDelta;
+          circle.pos[i] += circle.vel[i] * timeDelta;
         }
       }
 
       // Check for wall impact for circle index i
       // If outside the walls & heading away, then flip the velocity
-      function wallBounce(currTime, i) {
-        var impact = false;
+      function wallBounce(i) {
         for (var j = 0; j < dimensions; j++) {
           if ((circles[i].vel[j] < 0 && circles[i].pos[j] - circles[i].rad <= 0) ||
               (circles[i].vel[j] > 0 && circles[i].pos[j] + circles[i].rad >= canvasSize[j])) {
-            circles[i].lastChangeTime = currTime;
             circles[i].vel[j] *= -1;
-            impact = true;
-          }
-        }
-        return impact;
-      }
-
-      // Check for impact with other circles for circle index i
-      function circleBounce(currTime, i) {
-        for (var j = i + 1; j < circles.length; j++) {
-          var distance = circleDistance(circles[i], circles[j]);
-          if (distance <= circles[i].rad + circles[j].rad &&
-              (currTime - circles[i].lastChangeTime) > minChangeTime &&
-              (currTime - circles[j].lastChangeTime) > minChangeTime) {
-            circles[i].lastChangeTime = currTime;
-            circles[j].lastChangeTime = currTime;
-            reflect(circles[i], circles[j]);
           }
         }
       }
@@ -173,36 +157,12 @@
       // MATH & SHIT
       // Assumes all the vectors are the same dimensions
 
-      function circleDistance(circle1, circle2) {
+      function distanceSquared(circle1, circle2) {
         var sum = 0;
         for (var i = 0; i < dimensions; i++) {
           sum += Math.pow(circle1.pos[i] - circle2.pos[i], 2);
         }
-        return Math.sqrt(sum);
-      }
-
-      // Elastic collision between two particles of different mass
-      function reflect(circle1, circle2) {
-        var oldV1Mag = vectorMagnitude(circle1.vel);
-        var oldV2Mag = vectorMagnitude(circle2.vel);
-        var newV1Mag = (oldV1Mag * (circle1.mass - circle2.mass) + 2 * circle2.mass * oldV2Mag) / (circle1.mass + circle2.mass);
-        var newV2Mag = (oldV2Mag * (circle2.mass - circle1.mass) + 2 * circle1.mass * oldV1Mag) / (circle1.mass + circle2.mass);
-
-        // Unit vector normal to the plane of reflection
-        var n = unitVector(vectorSubtract(circle1.pos, circle2.pos));
-        var nX = n[0];
-        var nY = n[1];
-        // This matrix happens to be symmetric
-        var corner = -2 * nX * nY;
-        var reflectionTransformMatrix = [
-            [1 - 2 * nX * nX, corner],
-            [corner, 1 - 2 * nY * nY]
-          ];
-        var newV1Hat = unitVector(matrixMultiplyVector(reflectionTransformMatrix, circle1.vel));
-        var newV2Hat = unitVector(matrixMultiplyVector(reflectionTransformMatrix, circle2.vel));
-
-        circle1.vel = vectorMultiplyScalar(newV1Hat, newV1Mag);
-        circle2.vel = vectorMultiplyScalar(newV2Hat, newV2Mag);
+        return sum;
       }
 
       // Multiply a 2x2 matrix with a 1x2 vector
@@ -211,6 +171,10 @@
           vector[0] * matrix[0][0] + vector[1] * matrix[0][1],
           vector[0] * matrix[1][0] + vector[1] * matrix[1][1]
         ]
+      }
+
+      function perpendicularVector(vector) {
+        return [ -vector[1], vector[0] ]
       }
 
       function unitVector(vector) {

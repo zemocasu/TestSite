@@ -93,31 +93,33 @@
         return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
       }
 
-      var canvas           = document.getElementById('mycanvas');
-      var context          = canvas.getContext('2d');
-      var i                = 0;
-      var dot              = null;
-      var n_dots           = 1;
-      var n_dots_delta     = 1;
-      var max_n_dots       = 100;
+      var canvas            = document.getElementById('mycanvas');
+      var context           = canvas.getContext('2d');
+      var i                 = 0;
+      var dot               = null;
+      var n_dots            = 1;
+      var n_dots_multiplier = 2;
+      var min_n_dots        = 1;
+      var max_n_dots        = 128;
 
-      var border           = 20;
-      var dots_height      = canvas.height / 2 - border;
-      var dots_width       = canvas.width / 2 - border;
-      var dots             = create_dots(dots_width, dots_height, n_dots);
+      var border            = 20;
+      var dots_height       = canvas.height / 2 - border;
+      var dots_width        = canvas.width / 2 - border;
+      var dots              = create_dots(dots_width, dots_height, n_dots);
 
-      var rad_global       = 0;
-      var rad_hue          = 0;
-      var rad_lightness    = 0;
-      var rad_rad_hue      = 100;
-      var rad_rad_hue_step = 1;
+      var rad_global        = 0;
+      var rad_hue           = 0;
+      var rad_lightness     = 0;
+      var rad_rad_hue       = 100;
+      var rad_rad_hue_step  = 1;
 
-      // Advanceds n_dots by n_dots_delta
+      // Advanceds n_dots by n_dots_multiplier
       // Reverses direction once max_n_dots is reached
       function advance_n_dots() {
-        n_dots = Math.min(max_n_dots, n_dots + n_dots_delta);
-        if (n_dots == max_n_dots) {
-          n_dots_delta = -n_dots_delta;
+        console.log(n_dots);
+        n_dots *= n_dots_multiplier;
+        if (n_dots <= min_n_dots || n_dots >= max_n_dots) {
+          n_dots_multiplier = 1 / n_dots_multiplier;
         }
       }
 
@@ -147,6 +149,7 @@
         if (rad_lightness > 2 * Math.PI) {
           rad_lightness -= 2 * Math.PI;
         }
+
         // Clear the canvas.
         // context.clearRect(0, 0, canvas.width, canvas.height);
         for (i = 0; i < dots.length; i++) {
